@@ -80,7 +80,7 @@
     const probeCtx = probeCanvas.getContext("2d", { willReadFrequently: true });
 
     // ==========================================
-    // UNIQUELY IDENTIFY EACH PLAYER'S CARD
+    // UNIQUELY IDENTIFY EACH OWNED PLAYER'S CARD
     // ==========================================
     function getUniquePlayerId(actionsDiv) {
         const rect = actionsDiv.getBoundingClientRect();
@@ -99,6 +99,30 @@
         }
 
         return foundName ? `${foundName}_${slotBucket}` : `Slot_${slotBucket}`;
+    }
+
+    // ==========================================
+    // CHECK IF THIS CARD BELONGS TO AN OWNED LOCAL TANK
+    // ==========================================
+    function isOwnedLocalCard(actionsDiv) {
+        // TankTrouble keeps all button elements in the DOM and hides unused ones with display:none.
+        // Only count VISIBLE native buttons: owned local tanks have 5 visible buttons (Open, Wrench, Trophy, Controls, Leave),
+        // whereas online opponent cards only have 2 visible buttons (Friend/Add and @ Mention).
+        const visibleNativeButtons = Array.from(actionsDiv.children).filter(el => {
+            if (el.id === "tt-profile-ctrl-btn" || !el.classList.contains("button")) return false;
+            const style = getComputedStyle(el);
+            if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return false;
+            const r = el.getBoundingClientRect();
+            return r.width > 10 && r.height > 10;
+        });
+
+        // Also verify the 4th button (WASD/Arrows/Mouse control selector) is actually visible
+        const ctrlSlot = actionsDiv.querySelector("div.button.tooltipstered:nth-of-type(4)");
+        const hasVisibleControls = ctrlSlot &&
+            getComputedStyle(ctrlSlot).display !== "none" &&
+            ctrlSlot.getBoundingClientRect().width > 10;
+
+        return visibleNativeButtons.length >= 4 && Boolean(hasVisibleControls);
     }
 
     // ==========================================
@@ -189,16 +213,22 @@
     }
 
     // ==========================================
-    // INJECT IN BOTTOM-LEFT CORNER OF `div.actions`
+    // INJECT ONLY INTO OWNED LOCAL PLAYER CARDS
     // ==========================================
     function checkAndInjectButton() {
         const actionContainers = Array.from(document.querySelectorAll("div.actions"));
 
         for (const actionsDiv of actionContainers) {
+            let ctrlBtn = actionsDiv.querySelector("#tt-profile-ctrl-btn");
+
+            if (!isOwnedLocalCard(actionsDiv)) {
+                if (ctrlBtn) ctrlBtn.remove();
+                continue;
+            }
+
             const rect = actionsDiv.getBoundingClientRect();
             if (rect.height < 90 || rect.width < 150) continue;
 
-            // Ensure actionsDiv can anchor the bottom-left corner button cleanly
             if (getComputedStyle(actionsDiv).position === "static") {
                 actionsDiv.style.position = "relative";
             }
@@ -214,8 +244,6 @@
             } else if (!playerModes[playerId]) {
                 playerModes[playerId] = "WASD";
             }
-
-            let ctrlBtn = actionsDiv.querySelector("#tt-profile-ctrl-btn");
 
             if (!ctrlBtn) {
                 ctrlBtn = document.createElement("div");
