@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "TankTrouble Controller Support",
+  "version": "1.2",
+  "author": "invincible",
+  "description": "Native per-player Gamepad Controller support for TankTrouble — Made by invincible",
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["*://*.tanktrouble.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
